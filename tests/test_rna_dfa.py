@@ -6,21 +6,40 @@ import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+from automaton import Automaton
+from generate_traces import generate_traces
 from rnn_last_state_predictor import (  # Replace with your actual filename if needed
-    DATA,
-    symbol_to_idx,
-    state_to_idx,
-    idx_to_state,
-    idx_to_symbol,
     AQSequenceDataset,
     collate_batch,
     RNNPredictor,
     predict,
 )
 
+states = ["0", "1"]
+alphabet =  ["0", "1"]
+transitions = {("0,0"): "0",
+  ("0,1"): "1",
+  ("1,0"): "1",
+  ("1,1"): "0"}
+initial_state = "0"
+accepting_states = ["0"]
+
+automaton = Automaton(states=states,
+                      alphabet=alphabet,
+                      transitions=transitions,
+                      initial_state=initial_state,
+                      accepting_states=accepting_states)
+
+traces = generate_traces(10, automaton, num_solutions=100)
+data = [("".join(a for (a, _) in trace), trace[-1][1]) for trace in traces]
+symbol_to_idx = {a: i + 1 for i, a in enumerate(alphabet)}
+idx_to_symbol = {i: a for a, i in symbol_to_idx.items()}
+state_to_idx = {q: i for i, q in enumerate(states)}
+idx_to_state = {i: q for q, i in state_to_idx.items()}
+
 class TestDFASequenceModel(unittest.TestCase):
     def setUp(self):
-        self.dataset = AQSequenceDataset(DATA, symbol_to_idx, state_to_idx)
+        self.dataset = AQSequenceDataset(data, symbol_to_idx, state_to_idx)
         self.loader = DataLoader(self.dataset, batch_size=4, shuffle=False, collate_fn=collate_batch)
         self.model = RNNPredictor(
             vocab_size=len(symbol_to_idx) + 1,
@@ -30,8 +49,8 @@ class TestDFASequenceModel(unittest.TestCase):
         )
 
     def test_data_format(self):
-        self.assertTrue(all(isinstance(w, str) and isinstance(q, str) for (w, q) in DATA))
-        self.assertTrue(all(len(q) == 1 for (_, q) in DATA))
+        self.assertTrue(all(isinstance(w, str) and isinstance(q, str) for (w, q) in data))
+        self.assertTrue(all(len(q) == 1 for (_, q) in data))
 
     def test_tokenization_inverse(self):
         for a, idx in symbol_to_idx.items():
@@ -55,7 +74,7 @@ class TestDFASequenceModel(unittest.TestCase):
         self.assertEqual(logits.shape, (4, len(state_to_idx)))
 
     def test_prediction_output(self):
-        example = DATA[0][0]  # string input
+        example = data[0][0]  # string input
         pred = predict(self.model, list(example), symbol_to_idx, idx_to_state)
         self.assertTrue(pred in idx_to_state.values() or pred == "?")
 
