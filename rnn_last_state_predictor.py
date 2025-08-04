@@ -35,6 +35,7 @@ from automaton import load_automata_and_output_maps, cascade_multiple_automata, 
 
 # TODO: The original article extracts the automaton from hidden states. When we do this extraction for a cascade automaton, will the extraction give 
 # a decomposition of the automaton? 
+# TODO: Is performance/length generalization improved when using the cascade decomposition ? 
 
 # ---------------------------------------------------------------------
 # Dataset
