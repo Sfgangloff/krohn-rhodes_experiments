@@ -1,0 +1,26 @@
+automata:
+  - states: ["q0", "q1"]
+    alphabet: ["a", "b"]
+    transitions:
+      "q0,a": "q1"
+      "q0,b": "q0"
+      "q1,a": "q0"
+      "q1,b": "q1"
+    initial_state: "q0"
+    accepting_states: ["q1"]
+    output_map:
+      q0: y
+      q1: x
+
+  - states: ["p0", "p1"]
+    alphabet: ["x", "y"]
+    transitions:
+      "p0,x": "p1"
+      "p0,y": "p0"
+      "p1,x": "p0"
+      "p1,y": "p1"
+    initial_state: "p0"
+    accepting_states: ["p1"]
+    output_map:
+      p0: n
+      p1: m

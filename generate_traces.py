@@ -1,24 +1,61 @@
+"""
+generate_traces.py
+
+This module provides tools to generate valid execution traces of a deterministic finite automaton (DFA)
+by encoding its dynamics as a Boolean satisfiability (SAT) problem using the PySAT library.
+
+Given:
+    - A DFA
+    - A desired trace length n
+
+The script constructs a CNF formula whose satisfying assignments correspond to valid sequences of the form:
+    [(a₁, q₀), (a₂, q₁), ..., (aₙ, qₙ₋₁)]
+
+That is, each pair (aᵢ, qᵢ₋₁) represents the automaton reading input aᵢ while in state qᵢ₋₁.
+
+---
+
+Main functions:
+    - encode_dfa_trace_to_solver: encode the DFA logic into SAT clauses.
+    - enumerate_trace_from_dfa_solver: extract traces from satisfying models.
+    - generate_traces: convenience wrapper to get a list of traces.
+"""
+
 from pysat.solvers import Solver
 from itertools import combinations
-from automaton import Automaton,create_automaton_from_yaml
+from automaton import Automaton, create_automaton_from_yaml
 from utils import print_aq_sequences
 
 def encode_dfa_trace_to_solver(n: int, automaton: Automaton):
     """
-    Create a PySAT solver whose CNF encodes all valid execution traces (q_0,a_1,q_1,...,a_n,q_n)
-    of the given DFA of length n. No constraint on the final state being accepting.
+    Encode all valid DFA traces of length n into a SAT solver.
+
+    Each satisfying assignment will correspond to a trace:
+        (q₀, a₁, q₁, ..., aₙ, qₙ)
+
+    Constraints ensure:
+    - Only one input symbol at each time step
+    - Only one state at each time step
+    - Transitions respect the DFA definition
+    - Initial state is fixed
+
+    Args:
+        n (int): Length of the input sequence (number of input symbols).
+        automaton (Automaton): The DFA to encode.
 
     Returns:
-        solver (Solver)
-        varmap (dict): maps (type, position, value) to variable ID
+        Solver: A PySAT solver instance with all constraints added.
+        dict: A variable map (type, index, value) → variable ID
+              where 'x' represents input symbols, and 'y' represents states.
     """
     solver = Solver()
     varmap = {}
     varcount = 1
 
-    x_vars = {}  # (i, a): input symbol a at time i
-    y_vars = {}  # (i, q): state q at time i
+    x_vars = {}  # (i, a): variable representing letter a at position i
+    y_vars = {}  # (i, q): variable representing being in state q at time i
 
+    # Define variables
     for i in range(1, n + 1):
         for a in automaton.alphabet:
             x_vars[(i, a)] = varcount
@@ -31,7 +68,7 @@ def encode_dfa_trace_to_solver(n: int, automaton: Automaton):
             varmap[('y', i, q)] = varcount
             varcount += 1
 
-    # One symbol per position
+    # One input symbol per position
     for i in range(1, n + 1):
         literals = [x_vars[(i, a)] for a in automaton.alphabet]
         solver.add_clause(literals)
@@ -65,7 +102,22 @@ def encode_dfa_trace_to_solver(n: int, automaton: Automaton):
 
     return solver, varmap
 
-def enumerate_trace_from_dfa_solver(solver, automaton,varmap, num_solutions=7):
+def enumerate_trace_from_dfa_solver(solver, automaton, varmap, num_solutions=7):
+    """
+    Enumerate valid execution traces of the DFA from a SAT solver.
+
+    Each trace is a list of (input_symbol, source_state) pairs:
+        [(a₁, q₀), (a₂, q₁), ..., (aₙ, qₙ₋₁)]
+
+    Args:
+        solver (Solver): PySAT solver instance with DFA encoding.
+        automaton (Automaton): The DFA used for encoding.
+        varmap (dict): Variable map from encoding.
+        num_solutions (int): Maximum number of traces to extract.
+
+    Returns:
+        List[List[Tuple[str, str]]]: List of traces as (a, q) sequences.
+    """
     traces = []
 
     xvars = [(i, a, var) for (typ, i, a), var in varmap.items() if typ == 'x']
@@ -79,7 +131,7 @@ def enumerate_trace_from_dfa_solver(solver, automaton,varmap, num_solutions=7):
         word = ['?'] * max_i
         states = ['?'] * max_i
 
-        # Build inverse maps
+        # Build inverse lookup maps
         xdict = {(i, a): var for (i, a, var) in xvars}
         ydict = {(i, q): var for (i, q, var) in yvars}
 
@@ -106,13 +158,24 @@ def enumerate_trace_from_dfa_solver(solver, automaton,varmap, num_solutions=7):
 
     return traces
 
-def generate_traces(n:int,automaton:Automaton,num_solutions:int):
-    solver, varmap = encode_dfa_trace_to_solver(n, automaton)
-    words = enumerate_trace_from_dfa_solver(solver, automaton,varmap,num_solutions)
-    del solver
-    return words
+def generate_traces(n: int, automaton: Automaton, num_solutions: int):
+    """
+    High-level function to generate valid traces of a DFA using SAT.
 
-if __name__=="__main__":
+    Args:
+        n (int): Length of the input word (number of symbols).
+        automaton (Automaton): DFA instance.
+        num_solutions (int): Number of traces to return.
+
+    Returns:
+        List[List[Tuple[str, str]]]: Traces as (input symbol, state) pairs.
+    """
+    solver, varmap = encode_dfa_trace_to_solver(n, automaton)
+    traces = enumerate_trace_from_dfa_solver(solver, automaton, varmap, num_solutions)
+    del solver
+    return traces
+
+if __name__ == "__main__":
     automaton = create_automaton_from_yaml("config.yaml")
-    words = generate_traces(10,automaton,7)
+    words = generate_traces(10, automaton, 7)
     print_aq_sequences(words)
