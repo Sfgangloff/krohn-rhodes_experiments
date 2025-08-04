@@ -30,7 +30,7 @@ from torch.utils.data import Dataset, DataLoader
 from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence
 
 from automaton import Automaton,create_automaton_from_yaml
-from generate_traces import generate_traces
+from generate_traces import generate_traces, chain_transition
 from automaton import load_automata_and_output_maps, cascade_multiple_automata, flatten_dfa_states
 
 # TODO: The original article extracts the automaton from hidden states. When we do this extraction for a cascade automaton, will the extraction give 
@@ -195,7 +195,7 @@ if __name__ == "__main__":
         STATES = AUTOMATON.states
 
 
-    TRACES = generate_traces(10, AUTOMATON, num_solutions=100)
+    TRACES = generate_traces(5, AUTOMATON, num_solutions=32)
 
     # Convert full trace to (input string, final state)
     DATA = [("".join(a for (a, _) in trace), trace[-1][1]) for trace in TRACES]
@@ -217,13 +217,17 @@ if __name__ == "__main__":
 
     # Test predictions
     test_prefixes = [
-        list("aba"),
-        list("bbb"),
-        list("a"),
-        list("baba")
+        list("abaab"),
+        list("bbabb"),
+        list("aabba"),
+        list("baaaa")
     ]
+    ground_truth = []
+    for test in test_prefixes: 
+        ground_truth.append(chain_transition(inputs=test,automaton=AUTOMATON))
 
     print("\nPredictions:")
     for prefix in test_prefixes:
         pred = predict(model, prefix, SYMBOL_TO_IDX, IDX_TO_STATE)
         print(f"{prefix} → {pred}")
+    print(ground_truth)
