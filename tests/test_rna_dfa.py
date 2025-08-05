@@ -115,17 +115,5 @@ class TestRNNLastStatePredictor(unittest.TestCase):
         output = model(x, lengths)
         self.assertEqual(output.shape, (2, 2))  # batch_size × num_states
 
-    # def test_predict_interface(self):
-    #     class DummyModel(nn.Module):
-    #         def forward(self, x, lengths):
-    #             return torch.tensor([[1.0, 0.0]])  # always predicts class 0
-        
-    #     dummy = DummyModel()
-    #     pred = predict(dummy, ['a', 'b'], self.symbol_to_idx, self.idx_to_state)
-    #     self.assertEqual(pred, 'q0')
-
-    #     pred_empty = predict(dummy, [], self.symbol_to_idx, self.idx_to_state)
-    #     self.assertEqual(pred_empty, 'q0')
-
 if __name__ == "__main__":
     unittest.main()
