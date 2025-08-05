@@ -29,7 +29,7 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence
 
-from automaton import Automaton,create_automaton_from_yaml
+from automaton import create_automaton_from_yaml
 from generate_traces import generate_traces, chain_transition
 from automaton import load_automata_and_output_maps, cascade_multiple_automata, flatten_dfa_states
 
@@ -91,7 +91,7 @@ class RNNPredictor(nn.Module):
         embedding_dim (int): Size of the symbol embedding vectors.
         hidden_dim (int): Size of the LSTM hidden state.
     """
-    def __init__(self, vocab_size, num_states, embedding_dim=16, hidden_dim=32):
+    def __init__(self, vocab_size, num_states, embedding_dim=32, hidden_dim=64):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, embedding_dim, padding_idx=0)
         self.rnn = nn.LSTM(embedding_dim, hidden_dim, batch_first=True)
@@ -195,7 +195,7 @@ if __name__ == "__main__":
         STATES = AUTOMATON.states
 
 
-    TRACES = generate_traces(5, AUTOMATON, num_solutions=32)
+    TRACES = generate_traces(10, AUTOMATON, num_solutions=1024)
 
     # Convert full trace to (input string, final state)
     DATA = [("".join(a for (a, _) in trace), trace[-1][1]) for trace in TRACES]
@@ -215,12 +215,14 @@ if __name__ == "__main__":
     model = RNNPredictor(vocab_size=len(SYMBOL_TO_IDX)+1, num_states=len(STATE_TO_IDX))
     train_model(model, loader, num_epochs=30)
 
+    torch.save(model.state_dict(), "models/rnn_dfa_model.pt")
+
     # Test predictions
     test_prefixes = [
-        list("abaab"),
-        list("bbabb"),
-        list("aabba"),
-        list("baaaa")
+        list("abaabbbaab"),
+        list("bbabbaaaaa"),
+        list("aabbaaaaab"),
+        list("baaaababaa")
     ]
     ground_truth = []
     for test in test_prefixes: 

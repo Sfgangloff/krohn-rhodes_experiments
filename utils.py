@@ -27,3 +27,22 @@ def flatten(state) -> Tuple[str, ...]:
         return flat
     else:
         return (str(state),)
+    
+from typing import Optional, Dict
+
+def find_close_key(target: float, d: Dict[str, float], eps: float) -> Optional[str]:
+    """
+    Search for a key in the dictionary whose value is within eps of the target float.
+
+    Args:
+        target (float): The target value to compare against.
+        d (Dict[str, float]): Dictionary with string keys and float values.
+        eps (float): Allowed distance threshold.
+
+    Returns:
+        Optional[str]: The first key whose value is within eps of target, or None if none found.
+    """
+    for k, v in d.items():
+        if abs(v - target) < eps:
+            return k
+    return None
